@@ -1,0 +1,155 @@
+@startuml
+
+package base {
+  class TokenInfo {
+    - Name: string
+    - Symbol: string
+    - Decimal: int16
+    + TokenInfo(Name: string, Symbol: string, Decimal: int16)
+    + GetName(): string
+    + GetSymbol(): string
+    + GetDecimal(): int16
+  }
+
+  interface Account {
+      + PrivateKey(): ([]byte, error)
+      + PrivateKeyHex(): (string, error)
+      + PublicKey(): []byte
+      + PublicKeyHex(): string
+      + Address(): common.Address
+      + Sign(message: []byte): ([]byte, error)
+    }
+
+  interface Token {
+    + Chain(): Chain
+    + TokenInfo(): (*TokenInfo, error)
+    + BalanceOfAddress(address: common.Address): (*Balance, error)
+  }
+
+
+    interface Address {
+      + EncodePublicKeyToAddress(publicKey: string): common.Address
+      + IsValidAddress(address: common.Address): bool
+    }
+
+  interface Chain {
+    + MainToken(): Token
+    + FetchTransactionDetail(hash: string): (*TransactionDetail, error)
+    + FetchTransactionStatus(hash: string): TransactionStatus
+  }
+
+ interface Transaction {
+   + HexTransfer(from: Account, to: common.Address, value: *big.Int): (string, error)
+ }
+
+
+
+}
+
+package eth {
+class Client {
+  - rpcUrl: string
+  - timeout: int64
+  - chainId: *big.Int
+
+  + NewClient(rpcUrl: string, timeout: int64): *Client
+  + RPCClient(): *rpc.Client
+  + ChainId(): *big.Int
+}
+
+
+
+class Chain implements base.Chain { 
+  - client: *Client
+  - chainId: *big.Int
+
+  + NewChain(): *Chain
+  + ChainId(): *big.Int
+  + Client(): (*Client, error)
+  + CreateRemoteClient(rpcUrl: string, timeout: int64): (*Chain, error)
+  + MainToken(): base.Token
+  + FetchTransactionDetail(hash: string): (*base.TransactionDetail, error)
+  + FetchTransactionStatus(hash: string): base.TransactionStatus
+}
+
+class Token implements eth.IToken {
+  - Info: *base.TokenInfo
+  - chain: *Chain
+
+  + NewToken(chain: *Chain): *Token
+  + Chain(): base.Chain
+  + TokenInfo(): (*base.TokenInfo, error)
+  + BalanceOfAddress(address: common.Address): (*base.Balance, error)
+  + Transfer(from: Account, to: common.Address, value: *big.Int): (*types.Transaction, error)
+}
+
+interface IToken extends base.Token {
+  + Transfer(from: Account, to: common.Address, value: *big.Int): (*types.Transaction, error)
+}
+
+class Erc20Token extends Token {
+  - Token
+  - contractAddress: common.Address
+
+  + NewErc20Token(chain: *Chain, contractAddress: common.Address): *Erc20Token
+  + ContractAddress(): common.Address
+  + TokenInfo(): (*base.TokenInfo, error)
+  + BalanceOfAddress(address: common.Address): (*base.Balance, error)
+  + Transfer(from: Account, to: common.Address, value: *big.Int): (*types.Transaction, error)
+}
+
+class Transaction {
+  - From: common.Address
+  - To: common.Address
+  - Data: []byte
+  - Value: *big.Int
+  - GasPrice: *big.Int
+  - GasFeeCap: *big.Int
+  - GasTipCap: *big.Int
+  - BaseFee: *big.Int
+  - Nonce: *big.Int
+  - GasLimit: uint64
+  - chain: *Chain
+  - ctx: context.Context
+
+  + NewTransaction(from: common.Address, to: common.Address, value: *big.Int, chain: *Chain): *Transaction
+  + ensureGasPrice(): error
+  + getNonce(address: common.Address): (*big.Int, error)
+  + BuildTransfer(): (*types.Transaction, error)
+  + ToTransactOpts(privateKeyCDSA: *ecdsa.PrivateKey): *bind.TransactOpts
+  + SignTx(privateKeyCDSA: *ecdsa.PrivateKey, transaction: *types.Transaction): (*types.Transaction, error)
+  + SendTransaction(transaction: *types.Transaction): error
+}
+
+class Account implements base.Account{
+  - privateKeyECDSA: *ecdsa.PrivateKey
+
+  + NewAccount(mnemonic: string): (*Account, error)
+  + PrivateKey(): ([]byte, error)
+  + PrivateKeyHex(): (string, error)
+  + PublicKey(): []byte
+  + PublicKeyHex(): string
+  + Address(): common.Address
+  + Sign(message: []byte): ([]byte, error)
+}
+
+class Chain #aliceblue
+
+}
+
+base.TokenInfo --* base.Token
+base.Token *--* base.Chain
+eth.Client --* eth.Chain
+eth.Token *--* eth.Chain
+
+eth.Token <.. eth.Transaction
+eth.Erc20Token <.. eth.Transaction
+' eth.Transaction --|> eth.Token
+' eth.Transaction --|> eth.Erc20Token
+
+' eth.Account ..|> base.Account
+eth.Account ..> eth.Transaction
+
+
+
+@enduml

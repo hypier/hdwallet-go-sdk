@@ -1,0 +1,381 @@
+@startuml
+namespace base {
+    interface Account  {
+        + PrivateKey() ([]byte, error)
+        + PrivateKeyHex() (string, error)
+        + PublicKey() []byte
+        + PublicKeyHex() string
+        + Address() common.Address
+        + Sign(message []byte) ([]byte, error)
+
+    }
+    interface Address  {
+        + EncodePublicKeyToAddress(publicKey string) (common.Address, error)
+        + IsValidAddress(address common.Address) bool
+
+    }
+    class Balance << (S,Aquamarine) >> {
+        + Total *OptionalAmount
+        + Usable *OptionalAmount
+
+    }
+    interface Chain  {
+        + MainToken() Token
+        + FetchTransactionDetail(hash string) (*TransactionDetail, error)
+        + FetchTransactionStatus(hash string) TransactionStatus
+
+    }
+    interface NFT  {
+    }
+    class OptionalAmount << (S,Aquamarine) >> {
+        + Value string
+
+    }
+    interface Token  {
+        + Chain() Chain
+        + TokenInfo() (*TokenInfo, error)
+        + BalanceOfAddress(address common.Address) (*Balance, error)
+
+    }
+    class TokenInfo << (S,Aquamarine) >> {
+        + Name string
+        + Symbol string
+        + Decimal int16
+
+    }
+    interface Transaction  {
+    }
+    class TransactionDetail << (S,Aquamarine) >> {
+    }
+    class base.TransactionStatus << (T, #FF7700) >>  {
+    }
+}
+
+
+namespace eth {
+    class Account << (S,Aquamarine) >> {
+        - privateKeyECDSA *ecdsa.PrivateKey
+
+        + PrivateKey() ([]byte, error)
+        + PrivateKeyHex() (string, error)
+        + PublicKey() []byte
+        + PublicKeyHex() string
+        + Address() common.Address
+        + Sign(message []byte) ([]byte, error)
+
+    }
+    class Chain << (S,Aquamarine) >> {
+        - client *Client
+        - chainId *big.Int
+
+        + ChainId() *big.Int
+        + Client() (*Client, error)
+        + CreateRemoteClient(rpcUrl string, timeout int64) (*Chain, error)
+        + MainToken() base.Token
+        + FetchTransactionDetail(hash string) (*base.TransactionDetail, error)
+        + FetchTransactionStatus(hash string) base.TransactionStatus
+
+    }
+    class Client << (S,Aquamarine) >> {
+        - rpcClient *ethclient.Client
+        - rpcUrl string
+        - timeout time.Duration
+        - chainId *big.Int
+        - client *rpc.Client
+
+        + Client() *rpc.Client
+        + RPCClient() *ethclient.Client
+        + Timeout() time.Duration
+
+    }
+    class Erc20 << (S,Aquamarine) >> {
+    }
+    class Erc20Approval << (S,Aquamarine) >> {
+        + Owner common.Address
+        + Spender common.Address
+        + Value *big.Int
+        + Raw types.Log
+
+    }
+    class Erc20ApprovalIterator << (S,Aquamarine) >> {
+        - contract *bind.BoundContract
+        - event string
+        - logs <font color=blue>chan</font> types.Log
+        - sub go-ethereum.Subscription
+        - done bool
+        - fail error
+
+        + Event *Erc20Approval
+
+        + Next() bool
+        + Error() error
+        + Close() error
+
+    }
+    class Erc20Caller << (S,Aquamarine) >> {
+        - contract *bind.BoundContract
+
+        + Allowance(opts *bind.CallOpts, owner common.Address, spender common.Address) (*big.Int, error)
+        + BalanceOf(opts *bind.CallOpts, account common.Address) (*big.Int, error)
+        + Blacklist(opts *bind.CallOpts, arg0 common.Address) (bool, error)
+        + Decimals(opts *bind.CallOpts) (uint8, error)
+        + Name(opts *bind.CallOpts) (string, error)
+        + Owner(opts *bind.CallOpts) (common.Address, error)
+        + Symbol(opts *bind.CallOpts) (string, error)
+        + TotalSupply(opts *bind.CallOpts) (*big.Int, error)
+
+    }
+    class Erc20CallerRaw << (S,Aquamarine) >> {
+        + Contract *Erc20Caller
+
+        + Call(opts *bind.CallOpts, result *[]<font color=blue>interface</font>{}, method string, params ...<font color=blue>interface</font>{}) error
+
+    }
+    class Erc20CallerSession << (S,Aquamarine) >> {
+        + Contract *Erc20Caller
+        + CallOpts bind.CallOpts
+
+        + Allowance(owner common.Address, spender common.Address) (*big.Int, error)
+        + BalanceOf(account common.Address) (*big.Int, error)
+        + Blacklist(arg0 common.Address) (bool, error)
+        + Decimals() (uint8, error)
+        + Name() (string, error)
+        + Owner() (common.Address, error)
+        + Symbol() (string, error)
+        + TotalSupply() (*big.Int, error)
+
+    }
+    class Erc20Contract << (S,Aquamarine) >> {
+        - abi abi.ABI
+        - contractAddress common.Address
+        - backend bind.ContractBackend
+        - contract *bind.BoundContract
+        - opts *bind.CallOpts
+
+        + TotalSupply() (*big.Int, error)
+        + Name() (string, error)
+        + Symbol() (string, error)
+        + Decimals() (int, error)
+        + BalanceOf(tokenOwner common.Address) (*big.Int, error)
+        + Allowance(tokenOwner common.Address, spender common.Address) (*big.Int, error)
+        + Transfer(opts *bind.TransactOpts, to common.Address, tokens *big.Int) (*types.Transaction, error)
+        + Approve(opts *bind.TransactOpts, spender common.Address, tokens *big.Int) (*types.Transaction, error)
+        + TransferFrom(opts *bind.TransactOpts, from common.Address, to common.Address, tokens *big.Int) (*types.Transaction, error)
+
+    }
+    class Erc20Filterer << (S,Aquamarine) >> {
+        - contract *bind.BoundContract
+
+        + FilterApproval(opts *bind.FilterOpts, owner []common.Address, spender []common.Address) (*Erc20ApprovalIterator, error)
+        + WatchApproval(opts *bind.WatchOpts, sink <font color=blue>chan</font> *Erc20Approval, owner []common.Address, spender []common.Address) (event.Subscription, error)
+        + ParseApproval(log types.Log) (*Erc20Approval, error)
+        + FilterInitialized(opts *bind.FilterOpts) (*Erc20InitializedIterator, error)
+        + WatchInitialized(opts *bind.WatchOpts, sink <font color=blue>chan</font> *Erc20Initialized) (event.Subscription, error)
+        + ParseInitialized(log types.Log) (*Erc20Initialized, error)
+        + FilterOwnershipTransferred(opts *bind.FilterOpts, previousOwner []common.Address, newOwner []common.Address) (*Erc20OwnershipTransferredIterator, error)
+        + WatchOwnershipTransferred(opts *bind.WatchOpts, sink <font color=blue>chan</font> *Erc20OwnershipTransferred, previousOwner []common.Address, newOwner []common.Address) (event.Subscription, error)
+        + ParseOwnershipTransferred(log types.Log) (*Erc20OwnershipTransferred, error)
+        + FilterTransfer(opts *bind.FilterOpts, from []common.Address, to []common.Address) (*Erc20TransferIterator, error)
+        + WatchTransfer(opts *bind.WatchOpts, sink <font color=blue>chan</font> *Erc20Transfer, from []common.Address, to []common.Address) (event.Subscription, error)
+        + ParseTransfer(log types.Log) (*Erc20Transfer, error)
+
+    }
+    class Erc20Initialized << (S,Aquamarine) >> {
+        + Version uint8
+        + Raw types.Log
+
+    }
+    class Erc20InitializedIterator << (S,Aquamarine) >> {
+        - contract *bind.BoundContract
+        - event string
+        - logs <font color=blue>chan</font> types.Log
+        - sub go-ethereum.Subscription
+        - done bool
+        - fail error
+
+        + Event *Erc20Initialized
+
+        + Next() bool
+        + Error() error
+        + Close() error
+
+    }
+    class Erc20OwnershipTransferred << (S,Aquamarine) >> {
+        + PreviousOwner common.Address
+        + NewOwner common.Address
+        + Raw types.Log
+
+    }
+    class Erc20OwnershipTransferredIterator << (S,Aquamarine) >> {
+        - contract *bind.BoundContract
+        - event string
+        - logs <font color=blue>chan</font> types.Log
+        - sub go-ethereum.Subscription
+        - done bool
+        - fail error
+
+        + Event *Erc20OwnershipTransferred
+
+        + Next() bool
+        + Error() error
+        + Close() error
+
+    }
+    class Erc20Raw << (S,Aquamarine) >> {
+        + Contract *Erc20
+
+        + Call(opts *bind.CallOpts, result *[]<font color=blue>interface</font>{}, method string, params ...<font color=blue>interface</font>{}) error
+        + Transfer(opts *bind.TransactOpts) (*types.Transaction, error)
+        + Transact(opts *bind.TransactOpts, method string, params ...<font color=blue>interface</font>{}) (*types.Transaction, error)
+
+    }
+    class Erc20Session << (S,Aquamarine) >> {
+        + Contract *Erc20
+        + CallOpts bind.CallOpts
+        + TransactOpts bind.TransactOpts
+
+        + Allowance(owner common.Address, spender common.Address) (*big.Int, error)
+        + BalanceOf(account common.Address) (*big.Int, error)
+        + Blacklist(arg0 common.Address) (bool, error)
+        + Decimals() (uint8, error)
+        + Name() (string, error)
+        + Owner() (common.Address, error)
+        + Symbol() (string, error)
+        + TotalSupply() (*big.Int, error)
+        + Approve(spender common.Address, amount *big.Int) (*types.Transaction, error)
+        + Burn(account common.Address, amount *big.Int) (*types.Transaction, error)
+        + DecreaseAllowance(spender common.Address, subtractedValue *big.Int) (*types.Transaction, error)
+        + Denied(account common.Address, enabled bool) (*types.Transaction, error)
+        + IncreaseAllowance(spender common.Address, addedValue *big.Int) (*types.Transaction, error)
+        + Initialize() (*types.Transaction, error)
+        + Mint(to common.Address, amount *big.Int) (*types.Transaction, error)
+        + RenounceOwnership() (*types.Transaction, error)
+        + Transfer(to common.Address, amount *big.Int) (*types.Transaction, error)
+        + TransferFrom(from common.Address, to common.Address, amount *big.Int) (*types.Transaction, error)
+        + TransferOwnership(newOwner common.Address) (*types.Transaction, error)
+
+    }
+    class Erc20Token << (S,Aquamarine) >> {
+        - contractAddress common.Address
+
+        + ContractAddress() common.Address
+        + TokenInfo() (*base.TokenInfo, error)
+        + BalanceOfAddress(address common.Address) (*base.Balance, error)
+        + Transfer(privateKeyCDSA *ecdsa.PrivateKey, from common.Address, to common.Address, value *big.Int) (*types.Transaction, error)
+
+    }
+    class Erc20Transactor << (S,Aquamarine) >> {
+        - contract *bind.BoundContract
+
+        + Approve(opts *bind.TransactOpts, spender common.Address, amount *big.Int) (*types.Transaction, error)
+        + Burn(opts *bind.TransactOpts, account common.Address, amount *big.Int) (*types.Transaction, error)
+        + DecreaseAllowance(opts *bind.TransactOpts, spender common.Address, subtractedValue *big.Int) (*types.Transaction, error)
+        + Denied(opts *bind.TransactOpts, account common.Address, enabled bool) (*types.Transaction, error)
+        + IncreaseAllowance(opts *bind.TransactOpts, spender common.Address, addedValue *big.Int) (*types.Transaction, error)
+        + Initialize(opts *bind.TransactOpts) (*types.Transaction, error)
+        + Mint(opts *bind.TransactOpts, to common.Address, amount *big.Int) (*types.Transaction, error)
+        + RenounceOwnership(opts *bind.TransactOpts) (*types.Transaction, error)
+        + Transfer(opts *bind.TransactOpts, to common.Address, amount *big.Int) (*types.Transaction, error)
+        + TransferFrom(opts *bind.TransactOpts, from common.Address, to common.Address, amount *big.Int) (*types.Transaction, error)
+        + TransferOwnership(opts *bind.TransactOpts, newOwner common.Address) (*types.Transaction, error)
+
+    }
+    class Erc20TransactorRaw << (S,Aquamarine) >> {
+        + Contract *Erc20Transactor
+
+        + Transfer(opts *bind.TransactOpts) (*types.Transaction, error)
+        + Transact(opts *bind.TransactOpts, method string, params ...<font color=blue>interface</font>{}) (*types.Transaction, error)
+
+    }
+    class Erc20TransactorSession << (S,Aquamarine) >> {
+        + Contract *Erc20Transactor
+        + TransactOpts bind.TransactOpts
+
+        + Approve(spender common.Address, amount *big.Int) (*types.Transaction, error)
+        + Burn(account common.Address, amount *big.Int) (*types.Transaction, error)
+        + DecreaseAllowance(spender common.Address, subtractedValue *big.Int) (*types.Transaction, error)
+        + Denied(account common.Address, enabled bool) (*types.Transaction, error)
+        + IncreaseAllowance(spender common.Address, addedValue *big.Int) (*types.Transaction, error)
+        + Initialize() (*types.Transaction, error)
+        + Mint(to common.Address, amount *big.Int) (*types.Transaction, error)
+        + RenounceOwnership() (*types.Transaction, error)
+        + Transfer(to common.Address, amount *big.Int) (*types.Transaction, error)
+        + TransferFrom(from common.Address, to common.Address, amount *big.Int) (*types.Transaction, error)
+        + TransferOwnership(newOwner common.Address) (*types.Transaction, error)
+
+    }
+    class Erc20Transfer << (S,Aquamarine) >> {
+        + From common.Address
+        + To common.Address
+        + Value *big.Int
+        + Raw types.Log
+
+    }
+    class Erc20TransferIterator << (S,Aquamarine) >> {
+        - contract *bind.BoundContract
+        - event string
+        - logs <font color=blue>chan</font> types.Log
+        - sub go-ethereum.Subscription
+        - done bool
+        - fail error
+
+        + Event *Erc20Transfer
+
+        + Next() bool
+        + Error() error
+        + Close() error
+
+    }
+    interface IToken  {
+        + Transfer(privateKeyCDSA *ecdsa.PrivateKey, from common.Address, to common.Address, value *big.Int) (*types.Transaction, error)
+
+    }
+    class Token << (S,Aquamarine) >> {
+        - chain *Chain
+
+        + Info *base.TokenInfo
+
+        + Chain() base.Chain
+        + TokenInfo() (*base.TokenInfo, error)
+        + BalanceOfAddress(address common.Address) (*base.Balance, error)
+        + Transfer(privateKeyCDSA *ecdsa.PrivateKey, from common.Address, to common.Address, value *big.Int) (*types.Transaction, error)
+
+    }
+    class Transaction << (S,Aquamarine) >> {
+        - chain *Chain
+        - ctx context.Context
+
+        + From common.Address
+        + To common.Address
+        + Data []byte
+        + Value *big.Int
+        + GasPrice *big.Int
+        + GasFeeCap *big.Int
+        + GasTipCap *big.Int
+        + BaseFee *big.Int
+        + Nonce *big.Int
+        + GasLimit uint64
+
+        - ensureGasPrice() error
+        - getNonce(address common.Address) (*big.Int, error)
+
+        + BuildTransfer() (*types.Transaction, error)
+        + ToTransactOpts(privateKeyCDSA *ecdsa.PrivateKey) *bind.TransactOpts
+        + SignTx(privateKeyCDSA *ecdsa.PrivateKey, transaction *types.Transaction) (*types.Transaction, error)
+        + SendTransaction(transaction *types.Transaction) error
+
+    }
+}
+"eth.Erc20Caller" *-- "eth.Erc20"
+"eth.Erc20Filterer" *-- "eth.Erc20"
+"eth.Erc20Transactor" *-- "eth.Erc20"
+"eth.Token" *-- "eth.Erc20Token"
+
+"base.Account" <|-- "eth.Account"
+"base.Chain" <|-- "eth.Chain"
+"eth.IToken" <|-- "eth.Erc20Token"
+"base.Token" <|-- "eth.Token"
+"eth.IToken" <|-- "eth.Token"
+
+"__builtin__.int" #.. "base.TransactionStatus"
+@enduml
